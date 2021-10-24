@@ -35,12 +35,14 @@ int main(int argc,char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    pthread_join(thrd2,NULL);
-    pthread_join(thrd1,NULL);
-    exit(EXIT_SUCCESS);
+    // pthread_join(thrd2,NULL);
+    // pthread_join(thrd1,NULL);
+    // exit(EXIT_SUCCESS);
+    // pthread_exit(EXIT_SUCCESS);
 }
 
 void task1(int *num) {
+    exit(EXIT_SUCCESS);
     int x=1;
     do {
         write(pipe1[1],&x,sizeof(int));
