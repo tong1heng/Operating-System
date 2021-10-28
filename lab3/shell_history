@@ -1,0 +1,24 @@
+echo hello
+echo hello
+echo hello
+echo hello > 111.txt
+find . -maxdepth 1 -name 111.txt | xargs grep hello | wc
+echo hello | cat | cat
+ps
+ls
+ls -o
+ls &
+ls
+ps
+ps &
+ls
+ls &
+ls
+ps
+ls -l
+ls
+ps
+ls
+ls
+LS
+ls

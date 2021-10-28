@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+
 #define MAX_LEN  1000
 #define MAX_ARGV 100
 
@@ -39,7 +40,7 @@ void initializeCmd(COMMAND *c) {
 /* read a command */
 int readCmd(COMMAND *c) {
     c->len=read(0,c->cmd,MAX_LEN);
-    if(c->len <= 0) return -1;
+    if(c->len <= 1) return -1;
     else {
         /* deal with LF */
         c->cmd[c->len - 1] = '\0';
@@ -154,6 +155,7 @@ void executeCmd(COMMAND* c,char *p) {
                 close(pipe1[0]);
                 status = execvp(c->argv[0], c->argv);
                 perror("error in pid1");
+                exit(EXIT_FAILURE);
             }
             else {
                 waitpid(pid1, &status, 0);
@@ -183,6 +185,7 @@ void executeCmd(COMMAND* c,char *p) {
         else {
             status = execvp(c->argv[0], c->argv);
             perror("error");
+            exit(EXIT_FAILURE);
         }
     }
     else { /* parent process */
@@ -200,7 +203,7 @@ int main() {
         signal(SIGINT,SIG_IGN);
         signal(SIGTSTP,SIG_DFL);    /* set other signal to "exit" */
 
-        printf("tyh@localhost:~$ ");
+        printf("tongyiheng@localhost:~$ ");
         fflush(stdout);
 
         COMMAND newCmd;
@@ -209,7 +212,7 @@ int main() {
             // printf("c->len=%ld\n",len);
             // printf("c->cmd=%s\n",cmd);
             // perror("read failed");
-            exit(EXIT_FAILURE);
+            continue ;
         }
         else {
             char *ptr=analyseCmd(&newCmd);
