@@ -1,24 +1,41 @@
 echo hello
-echo hello
-echo hello
 echo hello > 111.txt
 find . -maxdepth 1 -name 111.txt | xargs grep hello | wc
 echo hello | cat | cat
-ps
-ls
-ls -o
+echo hello | cat
+ls -la
+ls -la
+echo hello > 111.txt
+cat < 111.txt
+find . -maxdepth 1 -name 111.txt | xargs grep hello | wc
+lll
 ls &
-ls
+ls -la
 ps
-ps &
-ls
-ls &
-ls
+ls -la &
 ps
-ls -l
-ls
 ps
-ls
-ls
-LS
-ls
+sleep 10
+sleep 1
+sleep 20
+cd ..
+cd ..
+cd ..
+cd ./
+cd ~
+cd /t
+cd lab3/
+cd ..
+cd ..
+cd
+pwd
+cd
+pwd
+cd
+pwd
+cd ..
+cd /tongyiheng
+cd //tongyiheng
+cd \tongyiheng
+cd /home
+cd ..
