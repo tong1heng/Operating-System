@@ -22,7 +22,8 @@
 #define MAX_PATH_LENGTH 255
 
 void sigcat() {
-    printf("%d Process continue\n", getpid());
+    printf("Process %d exit.\n", getpid());
+    exit(EXIT_SUCCESS);
 }
 
 typedef struct CMD {
@@ -48,8 +49,8 @@ void initializeCmd(COMMAND *c) {
 
 /* read a command */
 int readCmd(COMMAND *c) {
-    char c1[]="\033[49;32mtongyiheng@localhost\033[0m:\033[49;34m";
-    char c2[]="\033[0m$ ";
+    char c1[]="\001\033[49;32mtongyiheng@localhost\033[0m:\033[49;34m\002";
+    char c2[]="\001\033[0m$ \002";
 
     char path[MAX_PATH_LENGTH];
     char info[MAX_PATH_LENGTH+sizeof(c1)+sizeof(c2)];
@@ -263,7 +264,7 @@ int main() {
     read_history("/home/tongyiheng/shell_history");
     while(1) {
         signal(SIGINT,SIG_IGN);
-        signal(SIGTSTP,SIG_DFL);    /* set other signal to "exit" */
+        signal(SIGTSTP,sigcat);    /* set other signal to "exit" */
         
         COMMAND newCmd;
         initializeCmd(&newCmd);
