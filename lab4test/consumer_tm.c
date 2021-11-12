@@ -6,7 +6,7 @@ int main(int argc,char *argv[]) {
     else rate=3;
 
     buff_key=101;
-    buff_num=8;
+    buff_num=1;
     cget_key=103;
     cget_num=1;
     shm_flg=IPC_CREAT | 0644;
@@ -15,28 +15,31 @@ int main(int argc,char *argv[]) {
 
     prod_key=201;
     pmtx_key=202;
-    cons_key=301;
-    cmtx_key=302;
+
+    tobacco_paper_key=301;
+    tobacco_matches_key=302;
+    paper_matches_key=303;
+
     sem_flg=IPC_CREAT | 0644;
 
     sem_val=buff_num;
     prod_sem=set_sem(prod_key,sem_val,sem_flg);
 
     sem_val=0;
-    cons_sem=set_sem(cons_key,sem_val,sem_flg);
-    
+    tobacco_paper_sem=set_sem(tobacco_paper_key,sem_val,sem_flg);
+    tobacco_matches_sem=set_sem(tobacco_matches_key,sem_val,sem_flg);
+    paper_matches_sem=set_sem(paper_matches_key,sem_val,sem_flg);
+
     sem_val=1;
-    cmtx_sem=set_sem(cmtx_key,sem_val,sem_flg);
+    pmtx_sem=set_sem(pmtx_key,sem_val,sem_flg);
 
     while(1) {
-        down(cons_sem);
-        down(cmtx_sem);
+        down(tobacco_matches_sem);
 
         sleep(rate);
-        printf("%d consumer get:%c from Buffer[%d]\n",getpid(),buff_ptr[*cget_ptr],*cget_ptr);
+        printf("%d smoker get tobacco and matches from Buffer[%d]\n",getpid(),*cget_ptr);
         *cget_ptr=(*cget_ptr+1)%buff_num;
 
-        up(cmtx_sem);
         up(prod_sem);
     }
     return EXIT_SUCCESS;

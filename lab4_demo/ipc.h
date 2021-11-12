@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 #include <sys/types.h>
 #include <sys/shm.h>
 #include <sys/sem.h>
@@ -40,17 +39,15 @@ int cget_num;
 int *cget_ptr;
 
 key_t pmtx_key;
-int pmtx_sem;
 key_t prod_key;
 int prod_sem;
+int pmtx_sem;
+
+key_t cmtx_key;
+key_t cons_key;
+int cons_sem;
+int cmtx_sem;
 
 int sem_val;
 int sem_flg;
 int shm_flg;
-
-key_t tobacco_paper_key;
-int tobacco_paper_sem;
-key_t tobacco_matches_key;
-int tobacco_matches_sem;
-key_t paper_matches_key;
-int paper_matches_sem;

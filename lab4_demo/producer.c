@@ -7,11 +7,11 @@ int main(int argc,char *argv[]) {
 
     buff_key=101;
     buff_num=8;
-    cget_key=103;
-    cget_num=1;
+    pput_key=102;
+    pput_num=1;
     shm_flg=IPC_CREAT | 0644;
     buff_ptr=(char *)set_shm(buff_key,buff_num,shm_flg);
-    cget_ptr=(int *)set_shm(cget_key,cget_num,shm_flg);
+    pput_ptr=(int *)set_shm(pput_key,pput_num,shm_flg);
 
     prod_key=201;
     pmtx_key=202;
@@ -24,20 +24,21 @@ int main(int argc,char *argv[]) {
 
     sem_val=0;
     cons_sem=set_sem(cons_key,sem_val,sem_flg);
-    
+
     sem_val=1;
-    cmtx_sem=set_sem(cmtx_key,sem_val,sem_flg);
+    pmtx_sem=set_sem(pmtx_key,sem_val,sem_flg);
 
     while(1) {
-        down(cons_sem);
-        down(cmtx_sem);
+        down(prod_sem);
+        down(pmtx_sem);
 
+        buff_ptr[*pput_ptr]='A'+*pput_ptr;
         sleep(rate);
-        printf("%d consumer get:%c from Buffer[%d]\n",getpid(),buff_ptr[*cget_ptr],*cget_ptr);
-        *cget_ptr=(*cget_ptr+1)%buff_num;
+        printf("%d producer put:%c to Buffer[%d]\n",getpid(),buff_ptr[*pput_ptr],*pput_ptr);
+        *pput_ptr=(*pput_ptr+1)%buff_num;
 
-        up(cmtx_sem);
-        up(prod_sem);
+        up(pmtx_sem);
+        up(cons_sem);
     }
     return EXIT_SUCCESS;
 }

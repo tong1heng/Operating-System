@@ -38,10 +38,10 @@ int main(int argc,char *argv[]) {
     while(1) {
         int order=rand()%3;
         down(prod_sem);
-        down(pmtx_sem);
+        // down(pmtx_sem);
 
-        buff_ptr[*pput_ptr]='A'+order;
-        sleep(rate);
+        // buff_ptr[*pput_ptr]='A'+order;
+        // sleep(rate);
 
         if(order==0) {
             printf("%d producer put tobacco and paper to Buffer[%d]\n",getpid(),*pput_ptr);
@@ -53,9 +53,9 @@ int main(int argc,char *argv[]) {
             printf("%d producer put paper and matches to Buffer[%d]\n",getpid(),*pput_ptr);
         }
 
-        *pput_ptr=(*pput_ptr+1)%buff_num;
+        // *pput_ptr=(*pput_ptr+1)%buff_num;
 
-        up(pmtx_sem);
+        // up(pmtx_sem);
 
         if(order==0) {
             up(tobacco_paper_sem);
