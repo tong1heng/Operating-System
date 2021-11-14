@@ -1,0 +1,6 @@
+1：echo hello goodbye
+2：grep land testinput.txt
+3：echo file.txt > file.txt
+4：cat < file.txt
+5：grep flower < testinput.txt > testsh.txt
+6：grep me < testinput.txt | wc > testsh.txt
