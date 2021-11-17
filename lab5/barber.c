@@ -39,57 +39,20 @@ int main(int argc,char *argv[]) {
     sem_val = 1;
     account_sem = set_sem(account_key,sem_val,sem_flg);
 
-    pid_t pid1,pid2;
-    pid1 = fork();
-    if(pid1 == 0) {
-        while(1) {
-            printf("%d barber sleep\n",getpid());
-            // wait_quest_flg = 0;
-            // printf("before receive\n");
-            if(msgrcv(sofa_quest_id,&msg_arg,sizeof(msg_arg),0,0) >= 0) {
-                // read sofa quest queue
-                // printf("in ddd\n");
-                msgsnd(sofa_respond_id,&msg_arg,sizeof(msg_arg),0);
-                printf("%d barber cut for %d customer\n",getpid(),msg_arg.mid);
-                sleep(rate);
-                down(account_sem);
-                printf("%d barber get paid from %d customer\n",getpid(),msg_arg.mid);
-                up(account_sem);
-            }
+    printf("%d barber is sleeping\n",getpid());
+    while(1) {
+        // wait_quest_flg = 0;
+        if(msgrcv(sofa_quest_id,&msg_arg,sizeof(msg_arg),0,0) >= 0) {
+            // read sofa quest queue
+            msgsnd(sofa_respond_id,&msg_arg,sizeof(msg_arg),0);
+            printf("**BEGIN**: %d barber cut for %d customer\n\n",getpid(),msg_arg.mid);
+            sleep(rate);
+            printf("**END**: %d barber cut for %d customer\n\n",getpid(),msg_arg.mid);
+            down(account_sem);
+            printf("%d barber get paid from %d customer, %d customer leaves",getpid(),msg_arg.mid,msg_arg.mid);
+            up(account_sem);
         }
     }
-    else {
-        pid2 = fork();
-        if(pid2 == 0) {
-            while(1) {
-                printf("%d barber sleep\n",getpid());
-                // wait_quest_flg = 0;
-                if(msgrcv(sofa_quest_id,&msg_arg,sizeof(msg_arg),0,0) >= 0) {
-                    // read sofa quest queue
-                    msgsnd(sofa_respond_id,&msg_arg,sizeof(msg_arg),0);
-                    printf("%d barber cut for %d customer\n",getpid(),msg_arg.mid);
-                    sleep(rate);
-                    down(account_sem);
-                    printf("%d barber get paid from %d customer\n",getpid(),msg_arg.mid);
-                    up(account_sem);
-                }
-            }
-        }
-        else {
-            while(1) {
-                printf("%d barber sleep\n",getpid());
-                // wait_quest_flg = 0;
-                if(msgrcv(sofa_quest_id,&msg_arg,sizeof(msg_arg),0,0) >= 0) {
-                    // read sofa quest queue
-                    msgsnd(sofa_respond_id,&msg_arg,sizeof(msg_arg),0);
-                    printf("%d barber cut for %d customer\n",getpid(),msg_arg.mid);
-                    sleep(rate);
-                    down(account_sem);
-                    printf("%d barber get paid from %d customer\n",getpid(),msg_arg.mid);
-                    up(account_sem);
-                }
-            }
-        }
-    }
+    
     return EXIT_SUCCESS;
 }

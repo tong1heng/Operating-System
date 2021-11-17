@@ -8,15 +8,11 @@
 #include <unistd.h>
 
 #define BUFSZ	256
-// #define MAXVAL	100
-// #define STRSIZ	8
-// #define WRITERQUEST		1	//写请求标识
-// #define READERQUEST		2	//读请求标识
-// #define FINISHED	    3	//读写完成标识
-
-#define CHAIR  3
-#define SOFA   4
-#define ROOM   13
+#define MAXVAL	100
+#define STRSIZ	8
+#define WRITERQUEST		1	//写请求标识
+#define READERQUEST		2	//读请求标识
+#define FINISHED	    3	//读写完成标识
 
 /* 信号量控制用的共同体 */
 typedef union semuns {
@@ -29,35 +25,18 @@ typedef struct msgbuf {
     int	mid;
 } Msg_buf;
 
-key_t customer_key;
-int customer_sem;
-key_t account_key;
-int account_sem;
-
-int sem_val;
-int sem_flg;
-
-int wait_quest_flg;
-key_t wait_quest_key;
-int wait_quest_id;
-
-int wait_respond_flg;
-key_t wait_respond_key;
-int wait_respond_id;
-
-int sofa_quest_flg;
-key_t sofa_quest_key;
-int sofa_quest_id;
-
-int sofa_respond_flg;
-key_t sofa_respond_key;
-int sofa_respond_id;
-
+key_t buff_key;
+int buff_num;
+char *buff_ptr;
+int shm_flg;
 
 int quest_flg;
 key_t quest_key;
-int quest_id;
+int	quest_id;
 
+int respond_flg;
+key_t respond_key;
+int	respond_id;
 
 int get_ipc_id(char *proc_file,key_t key);
 

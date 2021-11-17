@@ -53,6 +53,10 @@ int sofa_respond_flg;
 key_t sofa_respond_key;
 int sofa_respond_id;
 
+// int quest_flg;
+// key_t quest_key;
+// int quest_id;
+
 
 int get_ipc_id(char *proc_file,key_t key);
 

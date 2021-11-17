@@ -23,6 +23,10 @@ int main(int argc,char *argv[]) {
     sofa_quest_key = 203;
     sofa_quest_id = set_msq(sofa_quest_key,sofa_quest_flg);
 
+    quest_flg = IPC_CREAT| 0644;
+    quest_key = 205;
+    quest_id = set_msq(quest_key,quest_flg);
+
     //联系一个响应消息队列
     sofa_respond_flg = IPC_CREAT| 0644;
     sofa_respond_key = 204;
@@ -43,26 +47,26 @@ int main(int argc,char *argv[]) {
     int wait_count=0;
     int i=0;
 
-    // printf("Wait quest \n");
+    // while(1) {
+    //     sleep(rate);
+    //     i++;
+    //     msg_arg.mid=i;
+    //     msg_arg.mtype=msg_arg.mid;
+    //     sofa_quest_flg=IPC_NOWAIT;
+    //     if((msgsnd(sofa_quest_id,&msg_arg,sizeof(msg_arg),sofa_quest_flg)) == 0) 
+    //         printf("successfully send to quest queue\n");
+    //     else 
+    //         perror("fail to send");
+    // }
 
+    // printf("Wait quest \n");
     while(1) {
         sleep(rate);
         i++;
         msg_arg.mid=i;
         msg_arg.mtype=msg_arg.mid;
-        sofa_quest_flg=IPC_NOWAIT;
-        if((msgsnd(sofa_quest_id,&msg_arg,sizeof(msg_arg),sofa_quest_flg)) == 0) 
-            printf("successfully send to quest queue\n");
-        else 
-            perror("fail to send");
-    }
-
-    /*
-    while(1) {
-        sleep(rate);
-        i++;
-        msg_arg.mid=i;
         if(sofa_count < SOFA) {
+            printf("sofa count < 4\n");
             if(wait_count != 0) {
                 wait_count--;
                 msgrcv(wait_quest_id,&msg_arg,sizeof(msg_arg),0,0);
@@ -74,14 +78,14 @@ int main(int argc,char *argv[]) {
             }
             
             sofa_quest_flg=IPC_NOWAIT;
-            msg_arg.mtype=msg_arg.mid;
+            
             // msgsnd(sofa_quest_id,&msg_arg,sizeof(msg_arg),sofa_quest_flg);
             // printf("sit on sofa\n");
 
-            printf("msg_arg.mid=%d\n",msg_arg.mid);
-            printf("msg_arg.mtype=%ld\n",msg_arg.mtype);
+            // printf("msg_arg.mid=%d\n",msg_arg.mid);
+            // printf("msg_arg.mtype=%ld\n",msg_arg.mtype);
 
-            if((msgsnd(sofa_quest_id,&msg_arg,sizeof(msg_arg),sofa_quest_flg)) == 0) 
+            if((msgsnd(quest_id,&msg_arg,sizeof(msg_arg),sofa_quest_flg)) == 0) 
                 printf("successfully send to quest queue\n");
             else 
                 perror("fail to send");
@@ -89,6 +93,8 @@ int main(int argc,char *argv[]) {
             // printf("sofa count=%d\n",sofa_count);
         }
         else if(wait_count < ROOM) {
+            printf("wait count < 13");
+
             printf("sofa is full, %d customer wait in the waiting room\n",i);
             wait_quest_flg=IPC_NOWAIT;
             msgsnd(wait_quest_id,&msg_arg,sizeof(msg_arg),wait_quest_flg);
@@ -103,14 +109,20 @@ int main(int argc,char *argv[]) {
 
         sofa_quest_id=IPC_NOWAIT;
         if(msgrcv(sofa_respond_id,&msg_arg,sizeof(msg_arg),0,sofa_quest_flg) >= 0) {
+            printf("one customer leave from sofa\n");
             sofa_count--;
         }
         wait_quest_flg=IPC_NOWAIT;
         if(msgrcv(wait_respond_id,&msg_arg,sizeof(msg_arg),0,wait_quest_flg) >= 0) {
+            printf("one customer leave from wait room\n");
             wait_count--;
         }
 
-        // printf("wait count = %d\n",wait_count);
-    }*/
+        printf("mid = %d\n",msg_arg.mid);
+        printf("mtype = %ld\n",msg_arg.mtype);
+
+        printf("sofa count = %d\n",sofa_count);
+        printf("wait count = %d\n",wait_count);
+    }
     return EXIT_SUCCESS;
 }
