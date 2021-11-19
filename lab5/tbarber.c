@@ -8,6 +8,12 @@ int main(int argc,char *argv[]) {
     if(argv[1] != NULL)	rate = atoi(argv[1]);
     else rate = 3;
 
+    buff_key=101;
+    buff_num=1;
+    shm_flg=IPC_CREAT | 0644;
+    buff_ptr=(char *)set_shm(buff_key,buff_num,shm_flg);
+    *buff_ptr=0;
+
     //联系一个请求消息队列
     wait_quest_flg = IPC_CREAT| 0644;
     wait_quest_key = 201;
@@ -56,7 +62,9 @@ int main(int argc,char *argv[]) {
                 sleep(rate);
                 printf("**END**: %d barber cut for %d customer\n\n",getpid(),msg_arg.mid);
                 down(account_sem);
-                printf("%d barber get paid from %d customer, %d customer leaves",getpid(),msg_arg.mid,msg_arg.mid);
+                *buff_ptr=*buff_ptr+1;
+                printf("%d barber get paid from %d customer, %d customer leaves\n\n",getpid(),msg_arg.mid,msg_arg.mid);
+                printf("Total account = %d\n\n",*buff_ptr);
                 up(account_sem);
             }
         }
@@ -74,7 +82,9 @@ int main(int argc,char *argv[]) {
                     sleep(rate);
                     printf("**END**: %d barber cut for %d customer\n\n",getpid(),msg_arg.mid);
                     down(account_sem);
-                    printf("%d barber get paid from %d customer, %d customer leaves",getpid(),msg_arg.mid,msg_arg.mid);
+                    *buff_ptr=*buff_ptr+1;
+                    printf("%d barber get paid from %d customer, %d customer leaves\n\n",getpid(),msg_arg.mid,msg_arg.mid);
+                    printf("Total account = %d\n\n",*buff_ptr);
                     up(account_sem);
                 }
             }
@@ -90,7 +100,9 @@ int main(int argc,char *argv[]) {
                     sleep(rate);
                     printf("**END**: %d barber cut for %d customer\n\n",getpid(),msg_arg.mid);
                     down(account_sem);
-                    printf("%d barber get paid from %d customer, %d customer leaves",getpid(),msg_arg.mid,msg_arg.mid);
+                    *buff_ptr=*buff_ptr+1;
+                    printf("%d barber get paid from %d customer, %d customer leaves\n\n",getpid(),msg_arg.mid,msg_arg.mid);
+                    printf("Total account = %d\n\n",*buff_ptr);
                     up(account_sem);
                 }
             }

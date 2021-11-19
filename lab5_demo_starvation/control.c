@@ -46,6 +46,7 @@ int main(int argc,char *argv[]) {
             }
             else if(msgrcv(quest_id,&msg_arg,sizeof(msg_arg),WRITERQUEST,quest_flg) >=0) {
                 //有写者请求
+                printf("get writer request\n");
                 w_mid = msg_arg.mid;
                 // count -= MAXVAL;
 
@@ -56,20 +57,21 @@ int main(int argc,char *argv[]) {
                 //     printf("%d reader finish\n",msg_arg.mid);
                 // }
 
-                while(msgrcv(quest_id,&msg_arg,sizeof(msg_arg),READERQUEST,quest_flg) >=0) {
+                if(msgrcv(quest_id,&msg_arg,sizeof(msg_arg),READERQUEST,quest_flg) >=0) {
                     count --;
                     msg_arg.mtype = msg_arg.mid;        
                     msgsnd(respond_id,&msg_arg,sizeof(msg_arg),0); 
-                    printf("%d quest read\n",msg_arg.mid);
+                    printf("before writer,%d quest read\n",msg_arg.mid);
+                    continue;
                 }
 
-                while(count < MAXVAL) {
-                    //以阻塞方式接收读完成消息
-                    msgrcv(quest_id,&msg_arg,sizeof(msg_arg),FINISHED,0);
-                    count++;
-                    printf("%d reader finish\n",msg_arg.mid);
-                }
-
+                // while(count < MAXVAL) {
+                //     //以阻塞方式接收读完成消息
+                //     msgrcv(quest_id,&msg_arg,sizeof(msg_arg),FINISHED,0);
+                //     count++;
+                //     printf("%d reader finish\n",msg_arg.mid);
+                // }
+                printf("permit writer \n");
                 //允许写者写
                 count -= MAXVAL;
                 msg_arg.mid = w_mid;
