@@ -1,7 +1,5 @@
 #include "dp.h"
-
-//分别是由东向西，由西向东的车辆数和单方向火车站同时最多能发的车辆数
-int eastsum,westsum,d_maxcar;
+using namespace std;
 
 Sema::Sema(int id) {
     sem_id = id;
@@ -16,28 +14,28 @@ Sema::~Sema() {}
 * buf:操作信号灯的结构
 */
 int Sema::down() {
-	struct sembuf buf;
-	buf.sem_op = -1;
-	buf.sem_num = 0;
-	buf.sem_flg = SEM_UNDO;
-	if((semop(sem_id,&buf,1)) < 0) {
-		perror("down error ");
-		exit(EXIT_FAILURE);
-	}
-	return EXIT_SUCCESS;
+    struct sembuf buf;
+    buf.sem_op = -1;
+    buf.sem_num = 0;
+    buf.sem_flg = SEM_UNDO;
+    if ((semop(sem_id, &buf, 1)) < 0) {
+        perror("down error ");
+        exit(EXIT_FAILURE);
+    }
+    return EXIT_SUCCESS;
 }
 
 int Sema::up() {
-	Sem_uns arg;
-	struct sembuf buf;
-	buf.sem_op = 1;
-	buf.sem_num = 0;
-	buf.sem_flg = SEM_UNDO;
-	if((semop(sem_id,&buf,1)) < 0) {
-		perror("up error ");
-		exit(EXIT_FAILURE);
-	}
-	return EXIT_SUCCESS;
+    Sem_uns arg;
+    struct sembuf buf;
+    buf.sem_op = 1;
+    buf.sem_num = 0;
+    buf.sem_flg = SEM_UNDO;
+    if ((semop(sem_id, &buf, 1)) < 0) {
+        perror("up error ");
+        exit(EXIT_FAILURE);
+    }
+    return EXIT_SUCCESS;
 }
 
 Lock::Lock(Sema * s) {
@@ -54,28 +52,39 @@ void Lock::open_lock() {
     sema->up();
 }
 
-//条件变量
-Condition::Condition(char *st[] ,Sema *sm) {
-	state = st;
-	sema = sm;
+Condition::Condition(Sema *s1, Sema *s2) {
+    sema0 = s1;
+    sema1 = s2;
 }
 
-void Condition::Wait(Lock *lock,int i) {    
-	if((*state[i^1] == waiting)) {  //对面没发车
-        *state[i] = running;        //发车
-    }    
-	else {
-		lock->open_lock();
-		sema->down();
-		lock->close_lock();
-	}
+void Condition::Wait(Lock *lock, int dir, int *cnt, int *curflow) {
+    if (dir == 0) {
+        lock->open_lock();
+        *cnt += 1;
+        sema0->down();
+        *curflow += 1;
+        lock->close_lock();
+    }
+    else if (dir == 1) {
+        lock->open_lock();
+        *cnt += 1;
+        sema1->down();
+        *curflow += 1;
+        lock->close_lock();
+    }
 }
 
-void Condition::Signal(int i) {
-	if((*state[i^1] == waiting) && (*state[i] == waiting)) { //可发车
-		sema->up();
-		*state[i] = running;
-	}
+void Condition::Signal(int dir, int *cnt, int *onrail) {
+    if (dir == 0) {
+        sema0->up();
+        *cnt -= 1;
+        *onrail += 1;
+    }
+    else if (dir == 1) {
+        sema1->up();
+        *cnt -= 1;
+        *onrail += 1;
+    }
 }
 
 /*
@@ -84,7 +93,7 @@ void Condition::Signal(int i) {
     * msg-消息队列,sem-信号量,shm-共享内存
     * key: 对应要获取的 IPC 的 id 号的键值
 */
-int dp::get_ipc_id(char *proc_file,key_t key)
+int Monitor::get_ipc_id(char *proc_file,key_t key)
 {
 	#define BUFSZ 256
 
@@ -129,7 +138,7 @@ int dp::get_ipc_id(char *proc_file,key_t key)
         * sem_val 信号量中信号灯的个数 
         * sem_flag 信号量的存取权限 
 */ 
-int dp::set_sem(key_t sem_key, int sem_val, int sem_flg) {
+int Monitor::set_sem(key_t sem_key, int sem_val, int sem_flg) {
     int sem_id; Sem_uns sem_arg;
 
     //测试由 sem_key 标识的信号量是否已经建立
@@ -158,7 +167,7 @@ int dp::set_sem(key_t sem_key, int sem_val, int sem_flg) {
 	* shm_val 共享内存字节的长度 
 	* shm_flag 共享内存的存取权限 
 */
-char *dp::set_shm(key_t shm_key, int shm_num, int shm_flg) {
+char *Monitor::set_shm(key_t shm_key, int shm_num, int shm_flg) {
 
     int i, shm_id; 
     char *shm_buf;
@@ -187,155 +196,209 @@ char *dp::set_shm(key_t shm_key, int shm_num, int shm_flg) {
     return shm_buf;
 }
 
-dp::dp(int r,int maxcur) {
-	int ipc_flg = IPC_CREAT | 0644;
-	int shm_key = 220;
-	int shm_num = 1;
-	int sem_key = 120;
-	int sem_val = 0;
-	int sem_id;
+Monitor::Monitor(int maxt, int maxf) {
+    int ipc_flg = IPC_CREAT | 0644;
 
-	Sema *sema;
-	rate = r;
+    if ((maxFlow = (int *) set_shm(100, 4, ipc_flg)) == NULL) {
+        perror("Share memory create error");
+        exit(EXIT_FAILURE);
+    }
+    if ((curFlow = (int *) set_shm(101, 4, ipc_flg)) == NULL) {
+        perror("Share memory create error");
+        exit(EXIT_FAILURE);
+    }
+    if ((onRail = (int *) set_shm(102, 4, ipc_flg)) == NULL) {
+        perror("Share memory create error");
+        exit(EXIT_FAILURE);
+    }
+    if ((curDir = (int *) set_shm(103, 4, ipc_flg)) == NULL) {
+        perror("Share memory create error");
+        exit(EXIT_FAILURE);
+    }
 
-	//创建共享内存
-	maxcars = (int *) set_shm(shm_key++, 1, ipc_flg);
-	nowcars = (int *) set_shm(shm_key++, 1, ipc_flg);
-	sumeast = (int *) set_shm(shm_key++, 1, ipc_flg);
-	sumwest = (int *) set_shm(shm_key++, 1, ipc_flg);
-	//初始化
-	*maxcars = maxcur;
-	*nowcars = 0;
-	*sumeast = 0;
-	*sumwest = 0;
-	//创建管程中的锁和条件变量
-	if((sem_id = set_sem(sem_key++,1,ipc_flg)) < 0) {
-		perror("Semaphore create error");
-		exit(EXIT_FAILURE);
-	}
-	sema = new Sema(sem_id);
-	lock = new Lock(sema);
-	for(int i=0; i<2; i++) {
-		if((state[i] = (char *)set_shm(shm_key++,shm_num,ipc_flg)) == NULL) {
-			perror("Share memory create error");
-			exit(EXIT_FAILURE);
-		}
-		*state[i] = waiting;
-		if((sem_id = set_sem(sem_key++,sem_val,ipc_flg)) < 0) {
-			perror("Semaphore create error");
-			exit(EXIT_FAILURE);
-		}
-		sema = new Sema(sem_id);
-		self[i] = new Condition(state,sema);
-	}
+    if ((cnt0 = (int *) set_shm(200, 4, ipc_flg)) == NULL) {
+        perror("Share memory create error");
+        exit(EXIT_FAILURE);
+    }
+    if ((cnt1 = (int *) set_shm(201, 4, ipc_flg)) == NULL) {
+        perror("Share memory create error");
+        exit(EXIT_FAILURE);
+    }
+    if ((waitcnt0 = (int *) set_shm(202, 4, ipc_flg)) == NULL) {
+        perror("Share memory create error");
+        exit(EXIT_FAILURE);
+    }
+    if ((waitcnt1 = (int *) set_shm(203, 4, ipc_flg)) == NULL) {
+        perror("Share memory create error");
+        exit(EXIT_FAILURE);
+    }
+    
+    Sema *sema0,*sema1;
+    Sema *semaLock;
+    int sema0_id,sema1_id,semaLock_id;
+
+    if ((sema0_id = set_sem(301, 0, ipc_flg)) < 0) {
+        perror("Semaphore create error");
+        exit(EXIT_FAILURE);
+    }
+    if ((sema1_id = set_sem(302, 0, ipc_flg)) < 0) {
+        perror("Semaphore create error");
+        exit(EXIT_FAILURE);
+    }
+    if ((semaLock_id = set_sem(303, 1, ipc_flg)) < 0) {
+        perror("Semaphore create error");
+        exit(EXIT_FAILURE);
+    }
+    
+    //初始化所有变量
+    *maxFlow = maxf;
+    *curFlow = 0;
+    *onRail = 0;
+    *curDir = 2;
+    *cnt0 = 0;
+    *cnt1 = 0;
+    *waitcnt0 = 0;
+    *waitcnt1 = 0;
+
+    sema0 = new Sema(sema0_id);
+    sema1 = new Sema(sema1_id);
+    semaLock = new Sema(semaLock_id);
+    lock = new Lock(semaLock);
+    condition = new Condition(sema0, sema1);
 }
 
-void dp::start(int i) {
-	lock->close_lock();
-	//测试能否发车
-	self[i]->Wait(lock,i);
+void Monitor::Arrive(int dir) {
+    lock->close_lock();
 
-	if(i == 0) {
-		*sumeast = *sumeast+1;
-		cout << "火车站" << getpid() << "发送火车由东向西"<<*nowcars<<"\n";
-	} 
-	else if(i == 1) {
-		*sumwest=*sumwest+1;
-		cout << "火车站" << getpid() << "发送火车由西向东"<<*nowcars<<"\n";
-	}
-	
-	*nowcars = *nowcars+1;
-	cnt[i] = cnt[i]+1;
-	//模拟发送火车的时间
-	sleep(rate);
-	lock->open_lock();
+    cout << "No." << getpid() << " Arrive -- 当前允许方向: " << *curDir << " "
+        << "正在等待: " << int(*waitcnt0) << "(A->B) " << int(*waitcnt1) << "(B->A)" << " "
+        << "正在通过: " << int(*onRail) << " "
+        << "单次流量: " << int(*curFlow) << "\n";
+    
+    if (*curDir == 2) {
+        *curDir = dir;
+        *onRail += 1;
+        *curFlow += 1;
+        lock->open_lock();
+    }
+    else if(*curDir != dir) {
+        if(dir == 0)    condition->Wait(lock, dir,waitcnt0,curFlow);
+        if(dir == 1)    condition->Wait(lock, dir,waitcnt1,curFlow);
+        lock->open_lock();
+    }
+    else if(*curDir == dir) {
+        if((*curFlow) < (*maxFlow)) {
+            *onRail += 1;
+            *curFlow += 1;
+            lock->open_lock();
+        }
+        else{
+            if(dir == 0)    condition->Wait(lock, dir,waitcnt0,curFlow);
+            if(dir == 1)    condition->Wait(lock, dir,waitcnt1,curFlow);
+            lock->open_lock();
+        }
+    }
 }
 
-//火车正常通过，离开
-void dp::leave(int i) {
-	lock->close_lock();
-	if(i == 0) {
-		if((cnt[0] == d_maxcar || *sumeast==eastsum)) {
-			if(*sumwest < westsum) {
-				cnt[0] = 0;
-				*state[0] = waiting;
-				self[1]->Signal(1);
-				if(*sumeast < eastsum) cout << "火车站"<< getpid() << "等待\n";
-				else cout << "火车站"<< getpid() << "结束发车\n";
-			}
-			else if(*sumeast < eastsum) {
-				cout << "火车站"<< getpid() << "继续发车\n";
-			}
-			else {
-				cout << "火车站"<< getpid() << "结束发车\n";
-			}
-		}
-		else {
-			cout << "火车站"<< getpid() << "继续发车\n";
-		}
-	}
-	else if(i == 1)
-	{
-		if((cnt[1] == d_maxcar || *sumwest == westsum)) {
-			if(*sumeast < eastsum) {
-				cnt[1] = 0;
-				*state[1] =waiting;
-				self[0]->Signal(0);
-				if(*sumwest<westsum) cout << "火车站"<< getpid() << "等待\n";
-				else cout << "火车站"<< getpid() << "结束发车\n";
-			}
-			else if(*sumwest < westsum) {
-				cout << "火车站" << getpid() << "继续发车\n";
-			}
-			else {
-				cout << "火车站" << getpid() << "结束发车\n";
-			}
-		}
-		else {
-			cout << "火车站" << getpid() << "继续发车\n";
-		}
+void Monitor::Leave(int dir) {
+    lock->close_lock();
+    
+    *onRail -= 1;
+    if (dir == 0) *cnt0 += 1;
+    if (dir == 1) *cnt1 += 1;
 
-	}
-	lock->open_lock();
+    cout << "No." << getpid() << " Leave -- 方向: " << dir << " 离开" << "\n";
+
+    if(*onRail == 0) {
+        cout << "重设允许通过方向: ";
+        *curFlow = 0;
+
+        if (dir == 0) {
+            if (*waitcnt1 > 0) {
+                *curDir = 1;
+                cout << *curDir << "\n";
+                cout << "即将唤醒列车数量: " << min(*waitcnt1,*maxFlow) << "\n";
+                for(int i=0; i < min(*waitcnt1,*maxFlow); i++)
+                    condition->Signal(1,waitcnt1,onRail);
+            }
+            else if (*waitcnt0 > 0) {
+                *curDir = 0;
+                cout << *curDir << "\n";
+                cout << "即将唤醒列车数量: " << min(*waitcnt0,*maxFlow) << "\n";
+                for(int i=0; i < min(*waitcnt0,*maxFlow); i++)
+                    condition->Signal(0,waitcnt0,onRail);
+            }
+            else {
+                *curDir = 2;
+                cout << *curDir << "\n";
+            }
+        }
+        else if (dir == 1) {
+            if (*waitcnt0 > 0) {
+                *curDir = 0;
+                cout << *curDir << "\n";
+                cout << "即将唤醒列车数量: " << min(*waitcnt0,*maxFlow) << "\n";
+                for(int i=0; i < min(*waitcnt0,*maxFlow); i++)
+                    condition->Signal(0,waitcnt0,onRail);
+            }
+            else if (*waitcnt1 > 0) {
+                *curDir = 1;
+                cout << *curDir << "\n";
+                cout << "即将唤醒列车数量: " << min(*waitcnt1,*maxFlow) << "\n";
+                for(int i=0; i < min(*waitcnt1,*maxFlow); i++)
+                    condition->Signal(1,waitcnt1,onRail);
+            }
+            else {
+                *curDir = 2;
+                cout << *curDir << "\n";
+            }
+        }
+        // cout << "等待队列: waitcnt0 = " << *waitcnt0 << " " << "waitcnt1 = " << *waitcnt1 << "\n";
+    }
+    lock->open_lock();
 }
-dp::~dp() {}
 
+Monitor::~Monitor() {}
 
+int main(int argc, char **argv) {
+    int MAX_TRAIN;
+    int MAX_FLOW;
+    cout << "请输入需要通过的列车总数:";
+    cin >> MAX_TRAIN;
+    cout << "请输入单方向允许同时通过的最大流量:";
+    cin >> MAX_FLOW;
+    Monitor *mnt = new Monitor(MAX_TRAIN, MAX_FLOW);
 
-int main(int argc,char *argv[]) {
-	int maxcur;
-	cout << "请输入火车的数量：";
-	cin >> maxcur;
-	cout << "请输入单方向同时最多发送的火车数";
-	cin >> d_maxcar;
+    int i;
+    int pid[MAX_TRAIN];
+    for (i = 0; i < MAX_TRAIN; i++) {
+        sleep(1);
+        pid[i] = fork();
+        if (pid[i] < 0) {
+            perror("process create error");
+        }
+        if (pid[i] == 0) {
+             srand(time(NULL));
+             int direct = rand() % 2;    //random direction
 
-	dp *tdp;
-	int pid[2];
-	int rate ;
-	rate = (argc > 1) ? atoi(argv[1]) : 2 ;
-	tdp = new dp(rate,maxcur);
+            cout << "No." << getpid() << " direction = " << direct << "\n";
 
-	for(int i=0;i<maxcur;i++) {
-		if(rand()%2==0) eastsum++;
-		else westsum++;
-	}
-	cout<<eastsum<<' '<<westsum<<endl;
+            mnt->Arrive(direct);
 
-	for(int i=0;i<=1;i++) {
-		pid[i]=fork();
-		if(pid[i]==0){
-			while(1) {
-				//cout<<*tdp->sumeast<<" "<<*tdp->sumwest<<endl;
-				tdp->start(i);
-				tdp->leave(i);
-				if(i==0 && *tdp->sumeast==eastsum) break;
-				else if(i==1 && *tdp->sumwest==westsum) break;
-			}
-			exit(0);
-		}
-	}
-	for(int i=0;i<2;i++) {
-		waitpid(pid[i],NULL,0);
-	}
-	return 0;
+            cout << "No." << getpid() << " Pass -- 正在通过: " << *mnt->onRail << " "
+                << "单次流量: " << *mnt->curFlow << "\n";
+            sleep(5);
+
+            mnt->Leave(direct);
+            exit(EXIT_SUCCESS);
+            // pause();
+        }
+    }
+    for (i = 0; i < MAX_TRAIN; i++) {
+        waitpid(pid[i], NULL, 0);
+    }
+
+    cout << "调度结束.\n";
+    cout << *(mnt->cnt0) << "辆列车从A到B," << *(mnt->cnt1) << "辆列车从B到A.\n";
+    return EXIT_SUCCESS;
 }

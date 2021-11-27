@@ -8,70 +8,67 @@
 #include <sys/sem.h>
 #include <sys/msg.h>
 #include <sys/wait.h>
-#include <time.h>
-using namespace std;
 
 /*信号灯控制用的共同体*/
-typedef union semuns { int val; } Sem_uns;
+typedef union semuns{
+    int val;
+}Sem_uns;
 
-enum State {waiting,running};
-
-//火车站管程中使用的信号量
+//管程中使用的信号量
 class Sema {
 public:
-	Sema(int id);
-	~Sema();
-	int down();     //信号量加 1
-	int up();       //信号量减 1
+    Sema(int id);
+    ~Sema();
+    int down();     //信号量加 1
+    int up();       //信号量减 1
 private:
-	int sem_id;     //信号量标识符
+    int sem_id;     //信号量标识符
 };
 
-//火车站管程中使用的锁
-class Lock{
+//管程中使用的锁
+class Lock {
 public:
-	Lock(Sema *lock);
-	~Lock();
-	void close_lock();
-	void open_lock();
+    Lock(Sema *lock);
+    ~Lock();
+    void close_lock();
+    void open_lock();
 private:
-	Sema *sema;     //锁使用的信号量
+    Sema *sema;     //锁使用的信号量
 };
 
-//火车站管程中使用的条件变量
-class Condition{
+class Condition {
 public:
-	Condition(char *st[], Sema *sm);
-	~Condition();
-	void Wait(Lock *lock,int i);    //条件变量阻塞操作
-	void Signal(int i);             //条件变量唤醒操作
+    Condition(Sema *s1, Sema *s2);
+    ~Condition();
+    void Wait(Lock *Lock, int dir, int *cnt, int *curflow);             //过路条件不足时阻塞
+    void Signal(int dir, int *cnt, int *onrail);               //唤醒阻塞的列车
 private:
-	Sema *sema;
-	char **state;
+    Sema* sema0;    // 一个方向的阻塞队列
+    Sema* sema1;    // 另一方向的阻塞队列
+    Lock* lock;     // 进入管程时获取的锁
 };
 
-//火车站管程的定义
-class dp{
+class Monitor {
 public:
-    int *maxcars;               //最大火车数
-    int *nowcars;               //当前已经通过的火车数
-        
-    int *sumeast;               //当前已经通过的由东向西的火车数
-    int *sumwest;               //当前已经通过的由西向东的火车数
+    Monitor(int maxt, int maxf);
+    ~Monitor();
+    void Arrive(int dir);     // 列车准备上铁路
+    void Leave(int dir);      // 列车通过了铁路
 
-	dp(int rate,int maxcur);    //管程构造函数
-	~dp();
-	void start(int i);          //发车
-	void leave(int i);          //火车通过后离开
+    int *cnt0,*cnt1;
+    int *waitcnt0,*waitcnt1;
+    int *curFlow;
+    int *curDir;                //当前允许通过的列车的方向
+    int *onRail;            //当前正在通过的列车数
 
-	//建立或获取 ipc 信号量的一组函数的原型说明
-	int get_ipc_id(char *proc_file,key_t key);
-	int set_sem(key_t sem_key,int sem_val,int sem_flag);
-	char *set_shm(key_t shm_key,int shm_num,int shm_flag);
 private:
-	int rate ;                  //车速
-	Lock *lock; 
-	char *state[2];             //两个火车站的状态
-	int cnt[2];                 //火车站同时发送火车的数量
-	Condition *self[2];         //火车站条件变量
+    //建立或获取 ipc 信号量的一组函数的原型说明
+    int get_ipc_id (char *proc_file, key_t key);
+    int set_sem(key_t sem_key, int sem_val, int sem_flag);
+    char *set_shm(key_t shm_key, int shm_num, int shm_flag);
+
+    int *maxFlow;           //
+
+    Condition *condition;   //条件变量
+    Lock *lock;             //管程锁
 };

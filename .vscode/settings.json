@@ -4,6 +4,7 @@
         "stdio.h": "c",
         "types.h": "c",
         "readline.h": "c",
-        "history.h": "c"
+        "history.h": "c",
+        "iostream": "cpp"
     }
 }
