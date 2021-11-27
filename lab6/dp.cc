@@ -378,9 +378,8 @@ int main(int argc, char **argv) {
             perror("process create error");
         }
         if (pid[i] == 0) {
-             srand(time(NULL));
-             int direct = rand() % 2;    //random direction
-
+            srand(time(NULL));
+            int direct = rand() % 2;    //random direction
             cout << "No." << getpid() << " direction = " << direct << "\n";
 
             mnt->Arrive(direct);
